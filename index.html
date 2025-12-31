@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Win Shop - Globe Edition</title>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- کتابخانه لردآیکون -->
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
+    
+    <style>
+        :root {
+            --bg-body: #1a1d21;       
+            --bg-chat: #363D45;       
+            --user-bubble: #D9B464;   
+            --user-text: #2C2C2C;     
+            --bot-bubble: #AABBCB;    
+            --bot-text: #1F2937;      
+            --input-bg: #23272C;      
+            --accent-green: #8F9E6C;  
+            --text-primary: #E5E7EB;  
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Vazirmatn', sans-serif;
+            outline: none;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* استایل بوم نقاشی برای برف */
+        #snow-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 450px;
+            height: 90vh;
+            max-height: 800px;
+            background-color: var(--bg-chat);
+            border-radius: 35px;
+            box-shadow: 
+                0 20px 50px rgba(0,0,0,0.5),
+                inset 0 1px 1px rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- استایل محل قرارگیری کره زمین جدید --- */
+        #new-widget-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* وسط چین دقیق */
+            z-index: 1; /* زیر پیام‌ها */
+            opacity: 0.15; /* شفافیت کم برای اینکه مزاحم خواندن متن نشود */
+            pointer-events: none; /* غیر قابل کلیک */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-header {
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background-color: rgba(43, 48, 54, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .logo-symbol {
+            font-size: 38px;
+            font-weight: 900;
+            line-height: 1;
+            background: linear-gradient(135deg, #788391 0%, #D1D5DB 50%, #5E6975 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
+            letter-spacing: -2px;
+        }
+
+        .brand-text {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #d1d5db;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.3);
+        }
+
+        .cart-icon-wrapper {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cart-icon-wrapper:hover { transform: scale(1.1); }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            scroll-behavior: smooth;
+            position: relative;
+            z-index: 5; 
+        }
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .message {
+            max-width: 85%;
+            padding: 14px 18px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            position: relative;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            word-wrap: break-word;
+        }
+
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .message.bot {
+            align-self: flex-start;
+            background-color: var(--bot-bubble);
+            color: var(--bot-text);
+            border-radius: 20px 20px 20px 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background-color: var(--user-bubble);
+            color: var(--user-text);
+            border-radius: 20px 20px 4px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-weight: 600;
+        }
+
+        .chat-input-area {
+            padding: 15px 20px;
+            background-color: transparent;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .btn-circle {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+            color: #2b3518;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+        .btn-send { border-radius: 14px; }
+        .btn-circle:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+        .input-wrapper {
+            flex-grow: 1;
+            background-color: var(--input-bg);
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            height: 45px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        #text-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #C0C0C0;
+            font-size: 0.9rem;
+            height: 100%;
+        }
+        #text-input::placeholder { color: #5A6069; }
+
+        #media-preview-pane {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(43, 48, 54, 0.98);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #media-preview-pane.active { transform: translateY(0); }
+        .preview-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; }
+        .media-box { width: 100%; max-height: 350px; border-radius: 20px; overflow: hidden; background: #23272C; display: flex; justify-content: center; align-items: center; }
+        .media-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        #caption-input { width: 100%; padding: 15px; background: #23272C; border: 1px solid #444; border-radius: 15px; color: white; }
+        .preview-actions { display: flex; gap: 15px; width: 100%; }
+        .preview-btn { flex: 1; padding: 15px; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; }
+        .btn-cancel { background: #4B5563; color: white; }
+        .btn-confirm { background: var(--user-bubble); color: var(--user-text); }
+        .typing-indicator span { display: inline-block; width: 6px; height: 6px; background-color: #333; border-radius: 50%; animation: typing 1s infinite ease-in-out; margin: 0 2px; }
+        @keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+    </style>
+</head>
+<body>
+
+<canvas id="snow-canvas"></canvas>
+
+<div class="chat-container">
+    
+    <!-- !!! کره زمین جدید !!! -->
+    <div id="new-widget-placeholder">
+        <lord-icon
+            src="globe.json"
+            trigger="loop"
+            delay="0"
+            colors="primary:#d1d5db,secondary:#8F9E6C"
+            style="width:250px;height:250px">
+        </lord-icon>
+    </div>
+    <!-- !!! پایان کره زمین !!! -->
+
+    <div class="chat-header">
+        <div class="logo-symbol">W</div>
+        <div class="brand-text">Win Shop AI</div>
+        <div style="flex-grow: 1;"></div>
+        <div class="cart-icon-wrapper" title="سبد خرید">
+            <lord-icon
+                src="cart.json"
+                trigger="hover"
+                colors="primary:#d1d5db,secondary:#8F9E6C"
+                style="width:40px;height:40px">
+            </lord-icon>
+        </div>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+        <div class="message bot">
+            سلام! ❄️<br>
+            به وین شاپ خوش اومدی. چطور می‌تونم کمکت کنم؟
+        </div>
+    </div>
+
+    <div class="chat-input-area">
+        <label for="file-upload" class="btn-circle">
+            <i class="fas fa-camera"></i>
+        </label>
+        <input type="file" id="file-upload" accept="image/*" hidden>
+
+        <div class="input-wrapper">
+            <input type="text" id="text-input" placeholder="پیام خود را بنویسید..." autocomplete="off">
+        </div>
+
+        <button id="send-btn" class="btn-circle btn-send">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+
+    <div id="media-preview-pane">
+        <div class="preview-content">
+            <div class="media-box" id="media-box"></div>
+            <input type="text" id="caption-input" placeholder="توضیح یا سوال در مورد عکس...">
+            <div class="preview-actions">
+                <button class="preview-btn btn-cancel" id="cancel-media">لغو</button>
+                <button class="preview-btn btn-confirm" id="confirm-media">ارسال و تحلیل</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* --- منطق برف --- */
+    const canvas = document.getElementById('snow-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    const maxFlakes = 80; 
+    const flakes = [];
+
+    function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Snowflake {
+        constructor() { this.init(); }
+        init() {
+            this.x = Math.random() * width; this.y = Math.random() * height;
+            this.r = Math.random() * 2 + 1; this.density = Math.random() * maxFlakes;
+            this.sy = Math.random() * 1.5 + 0.5; this.sx = Math.random() * 0.5 - 0.25;
+        }
+        update() {
+            this.y += this.sy; this.x += this.sx;
+            if (this.y > height) { this.y = -10; this.x = Math.random() * width; }
+            if (this.x > width) this.x = 0; if (this.x < 0) this.x = width;
+        }
+        draw() {
+            ctx.beginPath(); ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2, true); ctx.fill();
+        }
+    }
+
+    for(let i = 0; i < maxFlakes; i++) flakes.push(new Snowflake());
+
+    function animateSnow() {
+        ctx.clearRect(0, 0, width, height);
+        for(let i = 0; i < maxFlakes; i++) { flakes[i].update(); flakes[i].draw(); }
+        requestAnimationFrame(animateSnow);
+    }
+    animateSnow();
+
+    /* --- منطق چت --- */
+    const textInput = document.getElementById('text-input');
+    const sendBtn = document.getElementById('send-btn');
+    const messagesContainer = document.getElementById('chat-messages');
+    const fileUpload = document.getElementById('file-upload');
+    const mediaPane = document.getElementById('media-preview-pane');
+    const mediaBox = document.getElementById('media-box');
+    const captionInput = document.getElementById('caption-input');
+    const cancelMedia = document.getElementById('cancel-media');
+    const confirmMedia = document.getElementById('confirm-media');
+    let currentFile = null;
+
+    function addMessageToUI(text, isUser, mediaSrc = null) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+        if (mediaSrc) {
+            const img = document.createElement('img');
+            img.src = mediaSrc; img.style.width = '100%'; img.style.borderRadius = '10px'; img.style.marginBottom = '8px';
+            msgDiv.appendChild(img);
+        }
+        if (text) msgDiv.innerHTML += text.replace(/\n/g, '<br>');
+        messagesContainer.appendChild(msgDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function showLoading() {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message bot'; msgDiv.id = 'loading-bubble';
+        msgDiv.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+        messagesContainer.appendChild(msgDiv); messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    function removeLoading() { const loader = document.getElementById('loading-bubble'); if (loader) loader.remove(); }
+
+    async function sendData(text, file = null) {
+        let mediaPreviewUrl = null; if (file) mediaPreviewUrl = URL.createObjectURL(file);
+        addMessageToUI(text, true, mediaPreviewUrl); showLoading(); textInput.value = '';
+        try { setTimeout(() => { removeLoading(); addMessageToUI("این یک پاسخ تستی است.", false); }, 1500); } catch (error) { removeLoading(); }
+    }
+
+    sendBtn.addEventListener('click', () => { const text = textInput.value.trim(); if (text) sendData(text); });
+    textInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendBtn.click(); });
+    fileUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            currentFile = file; const reader = new FileReader();
+            reader.onload = function(evt) { mediaBox.innerHTML = `<img src="${evt.target.result}">`; mediaPane.classList.add('active'); };
+            reader.readAsDataURL(file);
+        }
+    });
+    cancelMedia.addEventListener('click', () => { mediaPane.classList.remove('active'); fileUpload.value = ''; currentFile = null; });
+    confirmMedia.addEventListener('click', () => {
+        const caption = captionInput.value.trim(); sendData(caption, currentFile);
+        mediaPane.classList.remove('active'); captionInput.value = ''; fileUpload.value = ''; currentFile = null;
+    });
+</script>
+</body>
+</html>
