@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Win Shop - Globe Edition</title>
+    <!-- فونت وزیر -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+    <!-- فونت آیکون‌ها (FontAwesome) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- کتابخانه لردآیکون -->
@@ -20,7 +22,14 @@
             --bot-text: #1F2937;      
             --input-bg: #23272C;      
             --accent-green: #8F9E6C;  
-            --text-primary: #E5E7EB;  
+            --text-primary: #E5E7EB;
+            --admin-mode-color: #ff5252;
+        }
+
+        /* حالت ادمین */
+        body.admin-mode {
+            --accent-green: var(--admin-mode-color);
+            --user-bubble: #ff8a80;
         }
 
         * {
@@ -41,8 +50,8 @@
             position: relative;
         }
 
-        /* استایل بوم نقاشی برای برف */
-        #snow-canvas {
+        /* بوم افکت فصل */
+        #seasonal-canvas {
             position: fixed;
             top: 0;
             left: 0;
@@ -69,18 +78,25 @@
             z-index: 10;
         }
 
-        /* --- استایل محل قرارگیری کره زمین جدید --- */
+        /* محل قرارگیری کره زمین */
         #new-widget-placeholder {
             position: absolute;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%); /* وسط چین دقیق */
-            z-index: 1; /* زیر پیام‌ها */
-            opacity: 0.15; /* شفافیت کم برای اینکه مزاحم خواندن متن نشود */
-            pointer-events: none; /* غیر قابل کلیک */
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            opacity: 0.15;
             display: flex;
             justify-content: center;
             align-items: center;
+        }
+        
+        /* لینک دور کره زمین */
+        #globe-link {
+            text-decoration: none;
+            cursor: pointer;
+            pointer-events: auto; /* مهم: برای اینکه کلیک کار کند */
+            display: block;
         }
 
         .chat-header {
@@ -113,13 +129,19 @@
         }
 
         .cart-icon-wrapper {
-            cursor: pointer;
             transition: transform 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .cart-icon-wrapper:hover { transform: scale(1.1); }
+        
+        /* لینک دور سبد خرید */
+        .cart-link {
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+        }
 
         .chat-messages {
             flex: 1;
@@ -242,39 +264,48 @@
 </head>
 <body>
 
-<canvas id="snow-canvas"></canvas>
+<canvas id="seasonal-canvas"></canvas>
 
 <div class="chat-container">
-    
-    <!-- !!! کره زمین جدید !!! -->
     <div id="new-widget-placeholder">
-        <lord-icon
-            src="globe.json"
-            trigger="loop"
-            delay="0"
-            colors="primary:#d1d5db,secondary:#8F9E6C"
-            style="width:250px;height:250px">
-        </lord-icon>
+        <!-- 
+            آیکون کره زمین (لینک شده به گیت‌هاب)
+            نکته: فایل globe.json باید کنار این فایل باشد 
+        -->
+        <a href="https://github.com/amiraliix125-ux" target="_blank" id="globe-link">
+            <lord-icon
+                src="globe.json" 
+                trigger="loop"
+                delay="0"
+                colors="primary:#d1d5db,secondary:#8F9E6C"
+                style="width:250px;height:250px">
+            </lord-icon>
+        </a>
     </div>
-    <!-- !!! پایان کره زمین !!! -->
 
     <div class="chat-header">
         <div class="logo-symbol">W</div>
         <div class="brand-text">Win Shop AI</div>
         <div style="flex-grow: 1;"></div>
         <div class="cart-icon-wrapper" title="سبد خرید">
-            <lord-icon
-                src="cart.json"
-                trigger="hover"
-                colors="primary:#d1d5db,secondary:#8F9E6C"
-                style="width:40px;height:40px">
-            </lord-icon>
+             <!-- 
+                آیکون سبد خرید (لینک شده به cart.php)
+                نکته: فایل cart.json باید کنار این فایل باشد 
+             -->
+             <a href="cart.php" class="cart-link">
+                <lord-icon
+                    src="cart.json" 
+                    trigger="hover"
+                    colors="primary:#d1d5db,secondary:#8F9E6C"
+                    style="width:40px;height:40px">
+                </lord-icon>
+            </a>
         </div>
     </div>
 
     <div class="chat-messages" id="chat-messages">
         <div class="message bot">
-            سلام! ❄️<br>
+            سلام! 👋<br>
             به وین شاپ خوش اومدی. چطور می‌تونم کمکت کنم؟
         </div>
     </div>
@@ -307,45 +338,80 @@
 </div>
 
 <script>
-    /* --- منطق برف --- */
-    const canvas = document.getElementById('snow-canvas');
+    /* --- منطق تغییر فصل با گرافیک برگ‌ها --- */
+    const canvas = document.getElementById('seasonal-canvas');
     const ctx = canvas.getContext('2d');
     let width, height;
-    const maxFlakes = 80; 
-    const flakes = [];
-
-    function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+    
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
     window.addEventListener('resize', resize);
     resize();
 
-    class Snowflake {
-        constructor() { this.init(); }
-        init() {
-            this.x = Math.random() * width; this.y = Math.random() * height;
-            this.r = Math.random() * 2 + 1; this.density = Math.random() * maxFlakes;
-            this.sy = Math.random() * 1.5 + 0.5; this.sx = Math.random() * 0.5 - 0.25;
+    const month = new Date().getMonth(); 
+
+    let seasonConfig = {};
+
+    if (month >= 2 && month <= 4) {
+        seasonConfig = { type: 'blossom', colors: ['#ffb7b2', '#ff9aa2', '#ffffff'], speedY: 0.8, speedX: 0.5, sizeMin: 12, sizeMax: 24, sway: 1.5, count: 60 };
+    } else if (month >= 5 && month <= 7) {
+        seasonConfig = { type: 'leaf', colors: ['#4caf50', '#8bc34a', '#66bb6a', '#388e3c'], speedY: 1.5, speedX: 1, sizeMin: 10, sizeMax: 20, sway: 2, count: 50 };
+    } else if (month >= 8 && month <= 10) {
+        seasonConfig = { type: 'leaf', colors: ['#ff9800', '#ff5722', '#ffc107', '#795548', '#d84315'], speedY: 1.2, speedX: 1.5, sizeMin: 12, sizeMax: 25, sway: 3, count: 70 };
+    } else {
+        seasonConfig = { type: 'snow', colors: ['#ffffff', '#e3f2fd'], speedY: 2, speedX: 0.5, sizeMin: 2, sizeMax: 6, sway: 0.5, count: 150 };
+    }
+
+    class Particle {
+        constructor() { this.reset(true); }
+        reset(initial = false) {
+            this.x = Math.random() * width;
+            this.y = initial ? Math.random() * height : -30;
+            this.size = Math.random() * (seasonConfig.sizeMax - seasonConfig.sizeMin) + seasonConfig.sizeMin;
+            this.depth = this.size / seasonConfig.sizeMax; 
+            this.speedY = (Math.random() * seasonConfig.speedY + 0.5) * this.depth;
+            this.speedX = (Math.random() - 0.5) * seasonConfig.speedX;
+            this.color = seasonConfig.colors[Math.floor(Math.random() * seasonConfig.colors.length)];
+            this.angle = Math.random() * 360; 
+            this.spinSpeed = (Math.random() - 0.5) * 3;
+            this.swayOffset = Math.random() * 100;
+            this.direction = Math.random() > 0.5 ? 1 : -1;
         }
         update() {
-            this.y += this.sy; this.x += this.sx;
-            if (this.y > height) { this.y = -10; this.x = Math.random() * width; }
-            if (this.x > width) this.x = 0; if (this.x < 0) this.x = width;
+            this.y += this.speedY;
+            this.x += Math.sin((this.y + this.swayOffset) * 0.01) * seasonConfig.sway + this.speedX;
+            this.angle += this.spinSpeed;
+            if (this.y > height + 30 || this.x > width + 30 || this.x < -30) { this.reset(); }
         }
         draw() {
-            ctx.beginPath(); ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2, true); ctx.fill();
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.shadowBlur = 5 * this.depth; ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.globalAlpha = 0.6 + (0.4 * this.depth);
+            if (seasonConfig.type === 'snow') {
+                ctx.beginPath(); ctx.arc(0, 0, this.size, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.shadowColor = "white"; ctx.fill();
+            } else if (seasonConfig.type === 'blossom') {
+                ctx.rotate(this.angle * Math.PI / 180); ctx.font = `${this.size}px Arial`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🌸', 0, 0);
+            } else if (seasonConfig.type === 'leaf') {
+                ctx.rotate(this.angle * Math.PI / 180);
+                let flip = Math.cos(this.angle * 0.05); ctx.scale(flip * this.direction, 1); 
+                ctx.beginPath(); ctx.moveTo(0, -this.size / 2);
+                ctx.bezierCurveTo(this.size / 2, -this.size / 4, this.size / 2, this.size / 4, 0, this.size);
+                ctx.bezierCurveTo(-this.size / 2, this.size / 4, -this.size / 2, -this.size / 4, 0, -this.size / 2);
+                ctx.fillStyle = this.color; ctx.fill();
+                ctx.beginPath(); ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.lineWidth = 1; ctx.moveTo(0, -this.size / 2); ctx.lineTo(0, this.size * 0.8); ctx.stroke();
+            }
+            ctx.restore();
         }
     }
 
-    for(let i = 0; i < maxFlakes; i++) flakes.push(new Snowflake());
+    const particles = [];
+    for (let i = 0; i < seasonConfig.count; i++) { particles.push(new Particle()); }
+    function animateBg() { ctx.clearRect(0, 0, width, height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(animateBg); }
+    animateBg();
 
-    function animateSnow() {
-        ctx.clearRect(0, 0, width, height);
-        for(let i = 0; i < maxFlakes; i++) { flakes[i].update(); flakes[i].draw(); }
-        requestAnimationFrame(animateSnow);
-    }
-    animateSnow();
-
-    /* --- منطق چت --- */
+    /* --- منطق هوشمند (اتصال به PHP و هوش مصنوعی) --- */
     const textInput = document.getElementById('text-input');
     const sendBtn = document.getElementById('send-btn');
     const messagesContainer = document.getElementById('chat-messages');
@@ -355,17 +421,24 @@
     const captionInput = document.getElementById('caption-input');
     const cancelMedia = document.getElementById('cancel-media');
     const confirmMedia = document.getElementById('confirm-media');
+    
     let currentFile = null;
+    let currentBase64 = null; // برای ارسال تصویر
+    let isAdmin = false; // وضعیت ادمین
 
     function addMessageToUI(text, isUser, mediaSrc = null) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${isUser ? 'user' : 'bot'}`;
         if (mediaSrc) {
             const img = document.createElement('img');
-            img.src = mediaSrc; img.style.width = '100%'; img.style.borderRadius = '10px'; img.style.marginBottom = '8px';
+            img.src = mediaSrc; 
+            img.style.width = '100%'; img.style.borderRadius = '10px'; img.style.marginBottom = '8px';
             msgDiv.appendChild(img);
         }
-        if (text) msgDiv.innerHTML += text.replace(/\n/g, '<br>');
+        if (text) {
+            let formatted = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            msgDiv.innerHTML += formatted;
+        }
         messagesContainer.appendChild(msgDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
@@ -378,27 +451,89 @@
     }
     function removeLoading() { const loader = document.getElementById('loading-bubble'); if (loader) loader.remove(); }
 
-    async function sendData(text, file = null) {
-        let mediaPreviewUrl = null; if (file) mediaPreviewUrl = URL.createObjectURL(file);
-        addMessageToUI(text, true, mediaPreviewUrl); showLoading(); textInput.value = '';
-        try { setTimeout(() => { removeLoading(); addMessageToUI("این یک پاسخ تستی است.", false); }, 1500); } catch (error) { removeLoading(); }
+    // تابع اصلی ارسال به سرور
+    async function sendData(text, base64Image = null) {
+        // فعال‌سازی حالت ادمین
+        if (text.trim() === 'win') {
+            isAdmin = !isAdmin;
+            document.body.classList.toggle('admin-mode');
+            const modeText = isAdmin ? "🔴 حالت مدیریت فعال شد." : "🔵 حالت کاربر عادی.";
+            addMessageToUI(modeText, false);
+            return;
+        }
+
+        let mediaPreviewUrl = base64Image; 
+        addMessageToUI(text || (base64Image ? "📷 تصویر..." : ""), true, mediaPreviewUrl); 
+        
+        showLoading(); 
+        
+        try {
+            // اتصال به api.php
+            const response = await fetch('api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: text,
+                    image: base64Image,
+                    isAdmin: isAdmin
+                })
+            });
+
+            const data = await response.json();
+            removeLoading();
+            
+            // نمایش پاسخ هوش مصنوعی یا دیتابیس
+            addMessageToUI(data.message, false);
+
+        } catch (error) {
+            removeLoading();
+            addMessageToUI("❌ خطا در اتصال به سرور.", false);
+            console.error(error);
+        }
     }
 
-    sendBtn.addEventListener('click', () => { const text = textInput.value.trim(); if (text) sendData(text); });
+    sendBtn.addEventListener('click', () => { 
+        const text = textInput.value.trim(); 
+        if (text) {
+            sendData(text); 
+            textInput.value = '';
+        }
+    });
+
     textInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendBtn.click(); });
+
+    // مدیریت آپلود عکس
     fileUpload.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
-            currentFile = file; const reader = new FileReader();
-            reader.onload = function(evt) { mediaBox.innerHTML = `<img src="${evt.target.result}">`; mediaPane.classList.add('active'); };
+            currentFile = file; 
+            const reader = new FileReader();
+            reader.onload = function(evt) { 
+                currentBase64 = evt.target.result; 
+                mediaBox.innerHTML = `<img src="${currentBase64}">`; 
+                mediaPane.classList.add('active'); 
+            };
             reader.readAsDataURL(file);
         }
     });
-    cancelMedia.addEventListener('click', () => { mediaPane.classList.remove('active'); fileUpload.value = ''; currentFile = null; });
+
+    cancelMedia.addEventListener('click', () => { 
+        mediaPane.classList.remove('active'); 
+        fileUpload.value = ''; 
+        currentFile = null; 
+        currentBase64 = null;
+    });
+
     confirmMedia.addEventListener('click', () => {
-        const caption = captionInput.value.trim(); sendData(caption, currentFile);
-        mediaPane.classList.remove('active'); captionInput.value = ''; fileUpload.value = ''; currentFile = null;
+        const caption = captionInput.value.trim(); 
+        sendData(caption, currentBase64);
+        mediaPane.classList.remove('active'); 
+        captionInput.value = ''; 
+        fileUpload.value = ''; 
+        currentFile = null;
+        currentBase64 = null;
     });
 </script>
 </body>
 </html>
+
